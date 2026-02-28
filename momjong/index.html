@@ -2,11 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Classic Mahjong</title>
 <style>
     :root {
-        --board-bg: #2b5f3f;
+        --board-bg: #1e4d2e;
         --tile-bg: #fffae6;
         --tile-border: #d4cbb3;
         --tile-shadow: #8c836c;
@@ -16,101 +16,104 @@
 
     body {
         margin: 0;
-        padding: 0;
+        padding-top: env(safe-area-inset-top);
+        padding-left: env(safe-area-inset-left);
+        padding-right: env(safe-area-inset-right);
+        padding-bottom: env(safe-area-inset-bottom);
         background-color: var(--board-bg);
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         color: #fff;
         display: flex;
         flex-direction: column;
-        align-items: center;
-        min-height: 100vh;
-        overflow-y: auto;
+        height: 100vh;
+        box-sizing: border-box;
+        overflow: hidden; 
     }
 
     header {
-        background-color: rgba(0, 0, 0, 0.4);
+        background-color: rgba(0, 0, 0, 0.6);
         width: 100%;
-        padding: 15px;
+        padding: 5px 15px; /* Shrunk padding */
         box-sizing: border-box;
         display: flex;
-        flex-wrap: wrap;
         justify-content: space-between;
         align-items: center;
         box-shadow: 0 4px 6px rgba(0,0,0,0.3);
         z-index: 100;
     }
 
-    h1 {
-        margin: 0;
-        font-size: 1.8rem;
-        letter-spacing: 1px;
-    }
-
     .controls {
         display: flex;
-        gap: 15px;
+        gap: 10px;
         align-items: center;
-        flex-wrap: wrap;
     }
 
     .game-number {
-        font-size: 1.2rem;
+        font-size: 1.1rem;
         display: flex;
         align-items: center;
         gap: 5px;
+        font-weight: bold;
     }
 
     input[type="number"] {
-        font-size: 1.2rem;
-        padding: 5px;
-        width: 90px;
-        border-radius: 5px;
+        font-size: 1.1rem;
+        padding: 4px;
+        width: 70px;
+        border-radius: 6px;
         border: none;
         text-align: center;
+        background: #fff;
     }
 
     button {
-        font-size: 1.2rem;
-        padding: 10px 20px;
+        font-size: 1.5rem; /* Slightly smaller icons */
+        padding: 5px 12px;
         border: none;
         border-radius: 8px;
         background-color: #e0e0e0;
         color: #333;
         cursor: pointer;
-        font-weight: bold;
-        transition: background 0.2s, transform 0.1s;
-        box-shadow: 0 4px #999;
+        transition: transform 0.1s;
+        box-shadow: 0 3px #999;
+        display: flex;
+        justify-content: center;
+        align-items: center;
     }
 
-    button:hover { background-color: #fff; }
     button:active {
         box-shadow: 0 0 #999;
-        transform: translateY(4px);
+        transform: translateY(3px);
     }
     
     button.primary {
         background-color: #4CAF50;
-        color: white;
-        box-shadow: 0 4px #2E7D32;
+        box-shadow: 0 3px #2E7D32;
     }
-    button.primary:hover { background-color: #45a049; }
 
     #board-container {
         position: relative;
-        width: 800px;
-        height: 700px;
-        margin-top: 30px;
-        transform-origin: top center;
+        flex-grow: 1;
+        width: 100%;
+        overflow: hidden; 
+    }
+
+    #board-scale-wrapper {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 1250px; /* Expanded for larger tiles */
+        height: 750px;
     }
 
     .tile {
         position: absolute;
-        width: 60px;
-        height: 80px;
+        width: 85px; /* Bigger width */
+        height: 115px; /* Bigger height */
         background-color: var(--tile-bg);
-        border: 1px solid var(--tile-border);
-        border-radius: 6px;
-        box-shadow: 3px 3px 0px var(--tile-shadow), 4px 4px 5px rgba(0,0,0,0.5);
+        border: 2px solid var(--tile-border);
+        border-radius: 8px;
+        box-shadow: 4px 4px 0px var(--tile-shadow), 5px 5px 8px rgba(0,0,0,0.6);
         cursor: pointer;
         user-select: none;
         transition: transform 0.1s, filter 0.3s, box-shadow 0.1s;
@@ -120,26 +123,26 @@
     }
 
     .tile.blocked {
-        filter: brightness(0.5);
+        filter: brightness(0.4);
         cursor: not-allowed;
     }
 
     .tile.selected {
-        transform: translateY(-5px);
-        box-shadow: 0 0 15px 5px var(--highlight);
+        transform: translateY(-8px);
+        box-shadow: 0 0 20px 8px var(--highlight);
         border-color: var(--highlight);
         z-index: 999 !important;
     }
 
     .tile.hint {
         animation: pulse 1s infinite alternate;
-        box-shadow: 0 0 15px 5px var(--hint-color);
+        box-shadow: 0 0 20px 8px var(--hint-color);
         border-color: var(--hint-color);
     }
 
     @keyframes pulse {
         0% { transform: scale(1); }
-        100% { transform: scale(1.1); }
+        100% { transform: scale(1.05); }
     }
 
     .tile svg {
@@ -152,7 +155,7 @@
         display: none;
         position: fixed;
         top: 0; left: 0; width: 100%; height: 100%;
-        background-color: rgba(0,0,0,0.8);
+        background-color: rgba(0,0,0,0.85);
         z-index: 1000;
         justify-content: center;
         align-items: center;
@@ -165,107 +168,99 @@
         border-radius: 12px;
         max-width: 600px;
         width: 90%;
-        font-size: 1.3rem;
-        line-height: 1.6;
+        font-size: 1.2rem;
+        line-height: 1.5;
         position: relative;
-    }
-
-    .modal-content h2 {
-        margin-top: 0;
-        color: #2b5f3f;
-        font-size: 2rem;
     }
 
     .close-btn {
         position: absolute;
-        top: 15px;
+        top: 10px;
         right: 20px;
-        font-size: 2rem;
+        font-size: 2.5rem;
         cursor: pointer;
         color: #888;
     }
-    
-    .close-btn:hover { color: #000; }
 
     #win-message {
         display: none;
         position: absolute;
-        top: 40%;
+        top: 50%;
         left: 50%;
         transform: translate(-50%, -50%);
-        font-size: 4rem;
+        font-size: 5rem;
         font-weight: bold;
         color: #ffd700;
-        text-shadow: 2px 2px 10px rgba(0,0,0,0.8);
+        text-shadow: 3px 3px 15px rgba(0,0,0,0.9);
         z-index: 500;
         text-align: center;
         width: 100%;
     }
 
-    @media (max-width: 850px) {
-        #board-container {
-            transform: scale(0.7);
-            margin-top: 0;
+    #win-message button {
+        margin: 20px auto;
+        font-size: 2rem;
+        padding: 15px 30px;
+    }
+
+    #portrait-warning {
+        display: none;
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background-color: var(--board-bg);
+        z-index: 2000;
+        color: white;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        font-size: 2rem;
+        padding: 20px;
+    }
+
+    @media (orientation: portrait) {
+        #portrait-warning {
+            display: flex;
         }
     }
-    @media (max-width: 600px) {
-        header {
-            padding: 10px;
-            justify-content: center;
-        }
-        h1 {
-            font-size: 1.5rem;
-            width: 100%;
-            text-align: center;
-            margin-bottom: 10px;
-        }
-        .controls { 
-            justify-content: center; 
-            gap: 8px;
-        }
-        button, input[type="number"] {
-            font-size: 1rem;
-            padding: 8px 12px;
-        }
-        #board-container {
-            transform: scale(0.45);
-            margin-top: 10px;
-        }
-    }
+
 </style>
 </head>
 <body>
 
+<div id="portrait-warning">
+    <div style="font-size: 4rem; margin-bottom: 20px;">🔄</div>
+    Please rotate your phone to landscape mode to play.
+</div>
+
 <header>
-    <h1>Mahjong Solitaire</h1>
+    <div class="game-number">
+        Game # <input type="number" id="game-seed" max="99999" min="1">
+    </div>
     <div class="controls">
-        <div class="game-number">
-            Game # <input type="number" id="game-seed" max="99999" min="1">
-        </div>
-        <button class="primary" onclick="initGame(true)">New Game</button>
-        <button onclick="showHint()">Hint</button>
-        <button onclick="document.getElementById('help-modal').style.display='flex'">Help & Tips</button>
+        <button class="primary" onclick="initGame(true)" title="New Game">🆕</button>
+        <button onclick="showHint()" title="Hint">💡</button>
+        <button onclick="document.getElementById('help-modal').style.display='flex'" title="Help">❓</button>
     </div>
 </header>
 
 <div id="board-container">
-    <div id="win-message">YOU WIN!<br><button class="primary" onclick="initGame()" style="margin-top: 20px;">Play Again</button></div>
+    <div id="board-scale-wrapper">
+        <div id="win-message">YOU WIN!<br><button class="primary" onclick="initGame()">🔄 Play Again</button></div>
+    </div>
 </div>
 
 <div id="help-modal" class="modal">
     <div class="modal-content">
         <span class="close-btn" onclick="document.getElementById('help-modal').style.display='none'">&times;</span>
-        <h2>How to Play</h2>
-        <p><strong>Goal:</strong> Remove all tiles from the board by finding matching pairs.</p>
-        <p><strong>Rules:</strong></p>
+        <h2 style="margin-top:0; color:#1e4d2e;">How to Play</h2>
+        <p><strong>Goal:</strong> Remove all tiles by finding matching pairs.</p>
         <ul>
             <li>You can only select a tile if it is <strong>"Free"</strong>.</li>
             <li>A tile is Free if there is <strong>no tile covering it</strong>, AND it is open on <strong>either its left or right side</strong>.</li>
-            <li>To help you, blocked tiles are naturally darkened. Bright tiles are ready to play!</li>
-            <li>Match identical tiles to remove them.</li>
-            <li><strong>Special Exception:</strong> Any 🌸 Flower matches any other Flower. Any ❄️ Season matches any other Season.</li>
+            <li>Dark tiles are blocked. Bright tiles are ready to play!</li>
+            <li><strong>Exceptions:</strong> Any 🌸 Flower matches any other Flower. Any ❄️ Season matches any other Season.</li>
         </ul>
-        <p>If you get stuck, click the <strong>Hint</strong> button at the top.</p>
     </div>
 </div>
 
@@ -289,10 +284,10 @@
     function generateLayout() {
         const layout = [];
         let id = 0;
-        for(let x=0; x<12; x++) for(let y=0; y<8; y++) layout.push({id: id++, x, y, z: 0});
-        for(let x=3; x<=8; x++) for(let y=1; y<=6; y++) layout.push({id: id++, x, y, z: 1});
-        for(let x=4; x<=7; x++) for(let y=3; y<=4; y++) layout.push({id: id++, x, y, z: 2});
-        for(let x=5; x<=6; x++) for(let y=3; y<=4; y++) layout.push({id: id++, x, y, z: 3});
+        for(let x=0; x<14; x++) for(let y=0; y<6; y++) layout.push({id: id++, x, y, z: 0});
+        for(let x=2; x<=11; x++) for(let y=1; y<=4; y++) layout.push({id: id++, x, y, z: 1});
+        for(let x=4; x<=9; x++) for(let y=2; y<=3; y++) layout.push({id: id++, x, y, z: 2});
+        for(let x=5; x<=8; x++) for(let y=2; y<=3; y++) layout.push({id: id++, x, y, z: 3});
         return layout;
     }
 
@@ -321,7 +316,6 @@
         return t1.type === t2.type && t1.val === t2.val;
     }
 
-    // --- Guaranteed Winnable Board Generator ---
     function generateWinnableBoard() {
         let maxAttempts = 100;
         for (let attempt = 0; attempt < maxAttempts; attempt++) {
@@ -332,7 +326,6 @@
             let stuck = false;
 
             while (remainingSlots.length > 0) {
-                // Find visually open slots in the remaining structure
                 let freeSlots = remainingSlots.filter(s => {
                     let above = remainingSlots.some(r => r.z === s.z + 1 && r.x === s.x && r.y === s.y);
                     if (above) return false;
@@ -342,16 +335,14 @@
                 });
 
                 if (freeSlots.length < 2) {
-                    stuck = true; // Very rare structural dead end
+                    stuck = true; 
                     break;
                 }
 
-                // Pick two random free slots
                 shuffle(freeSlots);
                 let slot1 = freeSlots[0];
                 let slot2 = freeSlots[1];
 
-                // Assign a matching pair from the deck
                 let tile1 = deck.pop();
                 let matchIdx = deck.findIndex(t => isMatch(tile1, t));
                 let tile2 = deck.splice(matchIdx, 1)[0];
@@ -359,13 +350,12 @@
                 assignedTiles.push({ ...slot1, type: tile1.type, val: tile1.val });
                 assignedTiles.push({ ...slot2, type: tile2.type, val: tile2.val });
 
-                // Remove the slots to expose the ones beneath/beside them
                 remainingSlots = remainingSlots.filter(s => s.id !== slot1.id && s.id !== slot2.id);
             }
 
             if (!stuck) return assignedTiles;
         }
-        return []; // Failsafe
+        return []; 
     }
 
     let activeTiles = [];
@@ -379,7 +369,8 @@
         else if (type === 'dragon') label = val.charAt(0);
         else label = type === 'flower' ? 'Fl' : 'Se';
         
-        svg += `<text x="4" y="14" font-size="14" font-family="sans-serif" font-weight="bold" fill="#555">${label}</text>`;
+        // Increased font size of the corner label for better visibility
+        svg += `<text x="4" y="16" font-size="18" font-family="sans-serif" font-weight="bold" fill="#222">${label}</text>`;
 
         if (type === 'dot') {
             const positions = [
@@ -519,14 +510,26 @@
                 }
             }
         }
-        alert("No visible matches! You might be stuck. Try a new game or use the back button if you made a wrong turn.");
+        alert("No visible matches! Try a new game.");
+    }
+
+    function scaleBoard() {
+        const container = document.getElementById('board-container');
+        const wrapper = document.getElementById('board-scale-wrapper');
+        
+        // Math updated for the new 1250x750 wrapper
+        const scaleX = (container.clientWidth - 20) / 1250; 
+        const scaleY = (container.clientHeight - 20) / 750;
+        const scale = Math.min(scaleX, scaleY, 1);
+        
+        wrapper.style.transform = `translate(-50%, -50%) scale(${scale})`;
     }
 
     function initGame(useInputSeed = false) {
         document.getElementById('win-message').style.display = 'none';
-        const container = document.getElementById('board-container');
-        Array.from(container.children).forEach(c => {
-            if(c.id !== 'win-message') container.removeChild(c);
+        const wrapper = document.getElementById('board-scale-wrapper');
+        Array.from(wrapper.children).forEach(c => {
+            if(c.id !== 'win-message') wrapper.removeChild(c);
         });
 
         const inputEl = document.getElementById('game-seed');
@@ -545,23 +548,28 @@
             el.id = `tile-${t.id}`;
             el.className = 'tile';
             
-            const baseX = t.x * 62;
-            const baseY = t.y * 82;
-            const zOffset = t.z * -6;
+            // New coordinates based on larger 85x115 tiles
+            const baseX = t.x * 87;
+            const baseY = t.y * 117;
+            const zOffset = t.z * -8;
             
-            el.style.left = `${baseX + zOffset + 30}px`; 
-            el.style.top = `${baseY + zOffset + 20}px`;
+            el.style.left = `${baseX + zOffset + 15}px`; 
+            el.style.top = `${baseY + zOffset + 15}px`;
             el.style.zIndex = (t.z * 100) + t.y + t.x;
 
             el.innerHTML = renderSVG(t.type, t.val);
             el.onclick = () => onTileClick(t.id);
-            container.appendChild(el);
+            wrapper.appendChild(el);
         });
 
         updateVisibility();
+        scaleBoard();
     }
 
-    window.onload = () => initGame(false);
+    window.onload = () => {
+        initGame(false);
+        window.addEventListener('resize', scaleBoard);
+    };
 </script>
 </body>
 </html>

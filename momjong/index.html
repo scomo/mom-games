@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Classic Mahjong</title>
+<style>
+    :root {
+        --board-bg: #2b5f3f;
+        --tile-bg: #fffae6;
+        --tile-border: #d4cbb3;
+        --tile-shadow: #8c836c;
+        --highlight: #ffd700;
+        --hint-color: #32cd32;
+    }
+
+    body {
+        margin: 0;
+        padding: 0;
+        background-color: var(--board-bg);
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        color: #fff;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        min-height: 100vh;
+        overflow-y: auto;
+    }
+
+    header {
+        background-color: rgba(0, 0, 0, 0.4);
+        width: 100%;
+        padding: 15px;
+        box-sizing: border-box;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        align-items: center;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        z-index: 100;
+    }
+
+    h1 {
+        margin: 0;
+        font-size: 1.8rem;
+        letter-spacing: 1px;
+    }
+
+    .controls {
+        display: flex;
+        gap: 15px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .game-number {
+        font-size: 1.2rem;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+    input[type="number"] {
+        font-size: 1.2rem;
+        padding: 5px;
+        width: 90px;
+        border-radius: 5px;
+        border: none;
+        text-align: center;
+    }
+
+    button {
+        font-size: 1.2rem;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 8px;
+        background-color: #e0e0e0;
+        color: #333;
+        cursor: pointer;
+        font-weight: bold;
+        transition: background 0.2s, transform 0.1s;
+        box-shadow: 0 4px #999;
+    }
+
+    button:hover { background-color: #fff; }
+    button:active {
+        box-shadow: 0 0 #999;
+        transform: translateY(4px);
+    }
+    
+    button.primary {
+        background-color: #4CAF50;
+        color: white;
+        box-shadow: 0 4px #2E7D32;
+    }
+    button.primary:hover { background-color: #45a049; }
+
+    #board-container {
+        position: relative;
+        width: 800px;
+        height: 700px;
+        margin-top: 30px;
+        transform-origin: top center;
+    }
+
+    .tile {
+        position: absolute;
+        width: 60px;
+        height: 80px;
+        background-color: var(--tile-bg);
+        border: 1px solid var(--tile-border);
+        border-radius: 6px;
+        box-shadow: 3px 3px 0px var(--tile-shadow), 4px 4px 5px rgba(0,0,0,0.5);
+        cursor: pointer;
+        user-select: none;
+        transition: transform 0.1s, filter 0.3s, box-shadow 0.1s;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    /* 3D Stacking visually adjusts left/top slightly per layer */
+    /* This will be handled in JS inline styles */
+
+    /* Tile States */
+    .tile.blocked {
+        filter: brightness(0.5);
+        cursor: not-allowed;
+    }
+
+    .tile.selected {
+        transform: translateY(-5px);
+        box-shadow: 0 0 15px 5px var(--highlight);
+        border-color: var(--highlight);
+        z-index: 999 !important;
+    }
+
+    .tile.hint {
+        animation: pulse 1s infinite alternate;
+        box-shadow: 0 0 15px 5px var(--hint-color);
+        border-color: var(--hint-color);
+    }
+
+    @keyframes pulse {
+        0% { transform: scale(1); }
+        100% { transform: scale(1.1); }
+    }
+
+    .tile svg {
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+    }
+
+    /* Modal for Help */
+    .modal {
+        display: none;
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background-color: rgba(0,0,0,0.8);
+        z-index: 1000;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .modal-content {
+        background-color: #fff;
+        color: #333;
+        padding: 30px;
+        border-radius: 12px;
+        max-width: 600px;
+        width: 90%;
+        font-size: 1.3rem;
+        line-height: 1.6;
+        position: relative;
+    }
+
+    .modal-content h2 {
+        margin-top: 0;
+        color: #2b5f3f;
+        font-size: 2rem;
+    }
+
+    .close-btn {
+        position: absolute;
+        top: 15px;
+        right: 20px;
+        font-size: 2rem;
+        cursor: pointer;
+        color: #888;
+    }
+    
+    .close-btn:hover { color: #000; }
+
+    #win-message {
+        display: none;
+        position: absolute;
+        top: 40%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 4rem;
+        font-weight: bold;
+        color: #ffd700;
+        text-shadow: 2px 2px 10px rgba(0,0,0,0.8);
+        z-index: 500;
+        text-align: center;
+        width: 100%;
+    }
+
+    @media (max-width: 850px) {
+        #board-container {
+            transform: scale(0.8);
+            margin-top: 0;
+        }
+    }
+    @media (max-width: 600px) {
+        #board-container {
+            transform: scale(0.5);
+            margin-top: -100px;
+        }
+        .controls { justify-content: center; }
+    }
+</style>
+</head>
+<body>
+
+<header>
+    <h1>Mahjong Solitaire</h1>
+    <div class="controls">
+        <div class="game-number">
+            Game # <input type="number" id="game-seed" max="99999" min="1">
+        </div>
+        <button class="primary" onclick="initGame(true)">New Game</button>
+        <button onclick="showHint()">Hint</button>
+        <button onclick="document.getElementById('help-modal').style.display='flex'">Help & Tips</button>
+    </div>
+</header>
+
+<div id="board-container">
+    <div id="win-message">YOU WIN!<br><button class="primary" onclick="initGame()" style="margin-top: 20px;">Play Again</button></div>
+</div>
+
+<div id="help-modal" class="modal">
+    <div class="modal-content">
+        <span class="close-btn" onclick="document.getElementById('help-modal').style.display='none'">&times;</span>
+        <h2>How to Play</h2>
+        <p><strong>Goal:</strong> Remove all tiles from the board by finding matching pairs.</p>
+        <p><strong>Rules:</strong></p>
+        <ul>
+            <li>You can only select a tile if it is <strong>"Free"</strong>.</li>
+            <li>A tile is Free if there is <strong>no tile covering it</strong>, AND it is open on <strong>either its left or right side</strong>.</li>
+            <li>To help you, blocked tiles are naturally darkened. Bright tiles are ready to play!</li>
+            <li>Match identical tiles to remove them.</li>
+            <li><strong>Special Exception:</strong> Any 🌸 Flower matches any other Flower. Any ❄️ Season matches any other Season.</li>
+        </ul>
+        <p>If you get stuck, click the <strong>Hint</strong> button at the top.</p>
+    </div>
+</div>
+
+<script>
+    // --- 1. Define the 144 Tile Deck ---
+    function generateDeck() {
+        const deck = [];
+        // Dots (1-9), Bams (1-9), Chars (1-9) - 4 of each
+        for(let i=1; i<=9; i++) {
+            for(let j=0; j<4; j++) {
+                deck.push({type: 'dot', val: i});
+                deck.push({type: 'bam', val: i});
+                deck.push({type: 'char', val: i});
+            }
+        }
+        // Winds (N, S, E, W) - 4 of each
+        ['N', 'S', 'E', 'W'].forEach(w => { for(let j=0; j<4; j++) deck.push({type: 'wind', val: w}); });
+        // Dragons (Red, Green, White) - 4 of each
+        ['Red', 'Green', 'White'].forEach(d => { for(let j=0; j<4; j++) deck.push({type: 'dragon', val: d}); });
+        // Flowers & Seasons - 1 of each (Total 4 Flowers, 4 Seasons)
+        ['F1','F2','F3','F4'].forEach(f => deck.push({type: 'flower', val: f}));
+        ['S1','S2','S3','S4'].forEach(s => deck.push({type: 'season', val: s}));
+        return deck;
+    }
+
+    // --- 2. Define the Pyramid Layout (144 Positions) ---
+    // Coordinates are grid based. x(0-11), y(0-7), z(0-3)
+    function generateLayout() {
+        const layout = [];
+        let id = 0;
+        // Layer 0: 12x8 = 96 tiles
+        for(let x=0; x<12; x++) {
+            for(let y=0; y<8; y++) layout.push({id: id++, x, y, z: 0});
+        }
+        // Layer 1: 6x6 = 36 tiles (Centered: x from 3 to 8, y from 1 to 6)
+        for(let x=3; x<=8; x++) {
+            for(let y=1; y<=6; y++) layout.push({id: id++, x, y, z: 1});
+        }
+        // Layer 2: 4x2 = 8 tiles (Centered: x from 4 to 7, y from 3 to 4)
+        for(let x=4; x<=7; x++) {
+            for(let y=3; y<=4; y++) layout.push({id: id++, x, y, z: 2});
+        }
+        // Layer 3: 2x2 = 4 tiles (Centered: x from 5 to 6, y from 3 to 4)
+        for(let x=5; x<=6; x++) {
+            for(let y=3; y<=4; y++) layout.push({id: id++, x, y, z: 3});
+        }
+        return layout;
+    }
+
+    // --- 3. Seeded Random Number Generator ---
+    // This allows reproducible shuffling based on the Game Number
+    let seed = 12345;
+    function random() {
+        seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+        let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+        t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+        return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    }
+
+    function shuffle(array) {
+        let currentIndex = array.length, randomIndex;
+        while (currentIndex !== 0) {
+            randomIndex = Math.floor(random() * currentIndex);
+            currentIndex--;
+            [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
+        }
+        return array;
+    }
+
+    // --- 4. Game State ---
+    let activeTiles = [];
+    let selectedTileId = null;
+
+    // --- 5. SVG Rendering Engine for Tiles ---
+    function renderSVG(type, val) {
+        let svg = `<svg viewBox="0 0 60 80" xmlns="http://www.w3.org/2000/svg">`;
+        
+        // Accessibility Label in Top Left
+        let label = "";
+        if (['dot', 'bam', 'char'].includes(type)) label = val;
+        else if (type === 'wind') label = val;
+        else if (type === 'dragon') label = val.charAt(0);
+        else label = type === 'flower' ? 'Fl' : 'Se';
+        
+        svg += `<text x="4" y="14" font-size="14" font-family="sans-serif" font-weight="bold" fill="#555">${label}</text>`;
+
+        // Center Graphics
+        if (type === 'dot') {
+            const positions = [
+                [], 
+                [[30, 45]], 
+                [[30, 30], [30, 60]], 
+                [[20, 25], [30, 45], [40, 65]], 
+                [[20, 25], [40, 25], [20, 65], [40, 65]], 
+                [[20, 25], [40, 25], [30, 45], [20, 65], [40, 65]], 
+                [[20, 25], [40, 25], [20, 45], [40, 45], [20, 65], [40, 65]], 
+                [[20, 20], [40, 20], [30, 35], [20, 50], [40, 50], [20, 65], [40, 65]], 
+                [[20, 20], [40, 20], [20, 35], [40, 35], [20, 50], [40, 50], [20, 65], [40, 65]], 
+                [[20, 20], [40, 20], [20, 35], [40, 35], [20, 50], [40, 50], [20, 65], [40, 65], [30, 42.5]]
+            ];
+            let color = val === 1 ? '#e74c3c' : (val % 2 === 0 ? '#27ae60' : '#2980b9');
+            let r = val === 1 ? 14 : 7;
+            positions[val].forEach(p => {
+                svg += `<circle cx="${p[0]}" cy="${p[1]}" r="${r}" fill="${color}" stroke="#111" stroke-width="1"/>`;
+            });
+        } 
+        else if (type === 'bam') {
+            if (val === 1) {
+                // Special Bird substitute (Star/Flower shape)
+                svg += `<circle cx="30" cy="45" r="16" fill="none" stroke="#27ae60" stroke-width="3"/>
+                        <path d="M 30 25 L 35 45 L 50 45 L 38 55 L 42 70 L 30 60 L 18 70 L 22 55 L 10 45 L 25 45 Z" fill="#e74c3c"/>`;
+            } else {
+                const positions = [
+                    [], [], 
+                    [[30, 30], [30, 60]], 
+                    [[30, 25], [20, 55], [40, 55]], 
+                    [[20, 25], [40, 25], [20, 65], [40, 65]], 
+                    [[20, 25], [40, 25], [30, 45], [20, 65], [40, 65]], 
+                    [[20, 25], [40, 25], [20, 45], [40, 45], [20, 65], [40, 65]], 
+                    [[20, 20], [40, 20], [30, 35], [20, 50], [40, 50], [20, 65], [40, 65]], 
+                    [[20, 20], [40, 20], [20, 35], [40, 35], [20, 50], [40, 50], [20, 65], [40, 65]], 
+                    [[20, 20], [30, 20], [40, 20], [20, 45], [30, 45], [40, 45], [20, 70], [30, 70], [40, 70]]
+                ];
+                positions[val].forEach(p => {
+                    let color = (p[1] <= 25 || p[0] === 30 && val !== 9) ? '#2980b9' : '#27ae60';
+                    if (val === 7 && p[1] < 40) color = '#e74c3c';
+                    svg += `<rect x="${p[0]-3}" y="${p[1]-10}" width="6" height="20" rx="3" fill="${color}" stroke="#000" stroke-width="0.5"/>`;
+                });
+            }
+        }
+        else if (type === 'char') {
+            const kanji = ["", "一", "二", "三", "四", "五", "六", "七", "八", "九"];
+            svg += `<text x="30" y="35" font-size="22" font-family="sans-serif" font-weight="bold" text-anchor="middle" fill="#111">${kanji[val]}</text>
+                    <text x="30" y="65" font-size="26" font-family="sans-serif" font-weight="bold" text-anchor="middle" fill="#e74c3c">萬</text>`;
+        }
+        else if (type === 'wind') {
+            const map = { 'N': '北', 'S': '南', 'E': '東', 'W': '西' };
+            svg += `<text x="30" y="55" font-size="36" font-family="sans-serif" font-weight="bold" text-anchor="middle" fill="#2c3e50">${map[val]}</text>`;
+        }
+        else if (type === 'dragon') {
+            const map = { 'Red': '中', 'Green': '發', 'White': '白' };
+            let color = val === 'Red' ? '#e74c3c' : (val === 'Green' ? '#27ae60' : '#2980b9');
+            svg += `<text x="30" y="55" font-size="36" font-family="sans-serif" font-weight="bold" text-anchor="middle" fill="${color}">${map[val]}</text>`;
+            if(val === 'White') svg += `<rect x="15" y="25" width="30" height="36" fill="none" stroke="#2980b9" stroke-width="4"/>`;
+        }
+        else if (type === 'flower') {
+            svg += `<text x="30" y="55" font-size="36" text-anchor="middle">🌸</text>`;
+        }
+        else if (type === 'season') {
+            svg += `<text x="30" y="55" font-size="36" text-anchor="middle">❄️</text>`;
+        }
+
+        svg += `</svg>`;
+        return svg;
+    }
+
+    // --- 6. Core Game Logic ---
+    function isFree(tile) {
+        // 1. Is there any tile directly above it? (z+1, same x, same y)
+        const above = activeTiles.some(t => t.z === tile.z + 1 && t.x === tile.x && t.y === tile.y);
+        if (above) return false;
+
+        // 2. Are both left AND right blocked?
+        const blockedLeft = activeTiles.some(t => t.z === tile.z && t.y === tile.y && t.x === tile.x - 1);
+        const blockedRight = activeTiles.some(t => t.z === tile.z && t.y === tile.y && t.x === tile.x + 1);
+        
+        // It is free if NOT blocked on both sides
+        return !(blockedLeft && blockedRight);
+    }
+
+    function isMatch(t1, t2) {
+        if (t1.id === t2.id) return false;
+        if (t1.type === 'flower' && t2.type === 'flower') return true;
+        if (t1.type === 'season' && t2.type === 'season') return true;
+        return t1.type === t2.type && t1.val === t2.val;
+    }
+
+    function updateVisibility() {
+        activeTiles.forEach(t => {
+            const el = document.getElementById(`tile-${t.id}`);
+            if (!el) return;
+            if (isFree(t)) {
+                el.classList.remove('blocked');
+            } else {
+                el.classList.add('blocked');
+                el.classList.remove('selected');
+            }
+        });
+        
+        if (selectedTileId !== null) {
+            const t = activeTiles.find(x => x.id === selectedTileId);
+            if(t && !isFree(t)) {
+                selectedTileId = null;
+            }
+        }
+    }
+
+    function onTileClick(id) {
+        const tile = activeTiles.find(t => t.id === id);
+        if (!tile || !isFree(tile)) return; // Reject if blocked
+
+        if (selectedTileId === null) {
+            // Select first tile
+            selectedTileId = id;
+            document.getElementById(`tile-${id}`).classList.add('selected');
+        } else if (selectedTileId === id) {
+            // Deselect
+            selectedTileId = null;
+            document.getElementById(`tile-${id}`).classList.remove('selected');
+        } else {
+            // Second tile selected, check match
+            const t1 = activeTiles.find(t => t.id === selectedTileId);
+            const t2 = tile;
+
+            if (isMatch(t1, t2)) {
+                // Match! Remove from logic
+                activeTiles = activeTiles.filter(t => t.id !== t1.id && t.id !== t2.id);
+                // Remove from DOM
+                document.getElementById(`tile-${t1.id}`).remove();
+                document.getElementById(`tile-${t2.id}`).remove();
+                selectedTileId = null;
+                
+                // Check win
+                if (activeTiles.length === 0) {
+                    document.getElementById('win-message').style.display = 'block';
+                } else {
+                    updateVisibility();
+                }
+            } else {
+                // Not a match, swap selection
+                document.getElementById(`tile-${selectedTileId}`).classList.remove('selected');
+                selectedTileId = id;
+                document.getElementById(`tile-${id}`).classList.add('selected');
+            }
+        }
+    }
+
+    function showHint() {
+        // Clear old hints visually
+        document.querySelectorAll('.hint').forEach(el => el.classList.remove('hint'));
+
+        const free = activeTiles.filter(isFree);
+        for(let i=0; i<free.length; i++) {
+            for(let j=i+1; j<free.length; j++) {
+                if(isMatch(free[i], free[j])) {
+                    const el1 = document.getElementById(`tile-${free[i].id}`);
+                    const el2 = document.getElementById(`tile-${free[j].id}`);
+                    if(el1 && el2) {
+                        el1.classList.add('hint');
+                        el2.classList.add('hint');
+                        setTimeout(() => {
+                            el1.classList.remove('hint');
+                            el2.classList.remove('hint');
+                        }, 3000);
+                    }
+                    return;
+                }
+            }
+        }
+        alert("No visible matches! You might be stuck. Try a new game.");
+    }
+
+    // --- 7. Initialization ---
+    function initGame(useInputSeed = false) {
+        document.getElementById('win-message').style.display = 'none';
+        const container = document.getElementById('board-container');
+        // Clear all except win message
+        Array.from(container.children).forEach(c => {
+            if(c.id !== 'win-message') container.removeChild(c);
+        });
+
+        // Handle Seed
+        const inputEl = document.getElementById('game-seed');
+        if (useInputSeed && inputEl.value) {
+            seed = parseInt(inputEl.value);
+        } else {
+            seed = Math.floor(Math.random() * 99999) + 1;
+            inputEl.value = seed;
+        }
+
+        const deck = shuffle(generateDeck());
+        const layout = generateLayout();
+        
+        activeTiles = layout.map((pos, index) => ({
+            ...pos,
+            type: deck[index].type,
+            val: deck[index].val
+        }));
+
+        selectedTileId = null;
+
+        // Render to DOM
+        activeTiles.forEach(t => {
+            const el = document.createElement('div');
+            el.id = `tile-${t.id}`;
+            el.className = 'tile';
+            
+            // Positioning math: x*62 (width + gap), y*82 (height + gap)
+            // Stacking: shift left/up slightly per Z level to simulate 3D
+            const baseX = t.x * 62;
+            const baseY = t.y * 82;
+            const zOffset = t.z * -6; // Move up and left to show depth
+            
+            el.style.left = `${baseX + zOffset + 30}px`; // +30 centers the whole grid roughly
+            el.style.top = `${baseY + zOffset + 20}px`;
+            
+            // Correct rendering order
+            el.style.zIndex = (t.z * 100) + t.y + t.x;
+
+            el.innerHTML = renderSVG(t.type, t.val);
+            el.onclick = () => onTileClick(t.id);
+            container.appendChild(el);
+        });
+
+        updateVisibility();
+    }
+
+    // Start immediately
+    window.onload = () => initGame(false);
+
+</script>
+</body>
+</html>

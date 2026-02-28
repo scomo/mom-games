@@ -119,10 +119,6 @@
         align-items: center;
     }
 
-    /* 3D Stacking visually adjusts left/top slightly per layer */
-    /* This will be handled in JS inline styles */
-
-    /* Tile States */
     .tile.blocked {
         filter: brightness(0.5);
         cursor: not-allowed;
@@ -152,7 +148,6 @@
         pointer-events: none;
     }
 
-    /* Modal for Help */
     .modal {
         display: none;
         position: fixed;
@@ -258,10 +253,8 @@
 </div>
 
 <script>
-    // --- 1. Define the 144 Tile Deck ---
     function generateDeck() {
         const deck = [];
-        // Dots (1-9), Bams (1-9), Chars (1-9) - 4 of each
         for(let i=1; i<=9; i++) {
             for(let j=0; j<4; j++) {
                 deck.push({type: 'dot', val: i});
@@ -269,42 +262,23 @@
                 deck.push({type: 'char', val: i});
             }
         }
-        // Winds (N, S, E, W) - 4 of each
         ['N', 'S', 'E', 'W'].forEach(w => { for(let j=0; j<4; j++) deck.push({type: 'wind', val: w}); });
-        // Dragons (Red, Green, White) - 4 of each
         ['Red', 'Green', 'White'].forEach(d => { for(let j=0; j<4; j++) deck.push({type: 'dragon', val: d}); });
-        // Flowers & Seasons - 1 of each (Total 4 Flowers, 4 Seasons)
         ['F1','F2','F3','F4'].forEach(f => deck.push({type: 'flower', val: f}));
         ['S1','S2','S3','S4'].forEach(s => deck.push({type: 'season', val: s}));
         return deck;
     }
 
-    // --- 2. Define the Pyramid Layout (144 Positions) ---
-    // Coordinates are grid based. x(0-11), y(0-7), z(0-3)
     function generateLayout() {
         const layout = [];
         let id = 0;
-        // Layer 0: 12x8 = 96 tiles
-        for(let x=0; x<12; x++) {
-            for(let y=0; y<8; y++) layout.push({id: id++, x, y, z: 0});
-        }
-        // Layer 1: 6x6 = 36 tiles (Centered: x from 3 to 8, y from 1 to 6)
-        for(let x=3; x<=8; x++) {
-            for(let y=1; y<=6; y++) layout.push({id: id++, x, y, z: 1});
-        }
-        // Layer 2: 4x2 = 8 tiles (Centered: x from 4 to 7, y from 3 to 4)
-        for(let x=4; x<=7; x++) {
-            for(let y=3; y<=4; y++) layout.push({id: id++, x, y, z: 2});
-        }
-        // Layer 3: 2x2 = 4 tiles (Centered: x from 5 to 6, y from 3 to 4)
-        for(let x=5; x<=6; x++) {
-            for(let y=3; y<=4; y++) layout.push({id: id++, x, y, z: 3});
-        }
+        for(let x=0; x<12; x++) for(let y=0; y<8; y++) layout.push({id: id++, x, y, z: 0});
+        for(let x=3; x<=8; x++) for(let y=1; y<=6; y++) layout.push({id: id++, x, y, z: 1});
+        for(let x=4; x<=7; x++) for(let y=3; y<=4; y++) layout.push({id: id++, x, y, z: 2});
+        for(let x=5; x<=6; x++) for(let y=3; y<=4; y++) layout.push({id: id++, x, y, z: 3});
         return layout;
     }
 
-    // --- 3. Seeded Random Number Generator ---
-    // This allows reproducible shuffling based on the Game Number
     let seed = 12345;
     function random() {
         seed |= 0; seed = seed + 0x6D2B79F5 | 0;
@@ -323,15 +297,65 @@
         return array;
     }
 
-    // --- 4. Game State ---
+    function isMatch(t1, t2) {
+        if (t1.id !== undefined && t2.id !== undefined && t1.id === t2.id) return false;
+        if (t1.type === 'flower' && t2.type === 'flower') return true;
+        if (t1.type === 'season' && t2.type === 'season') return true;
+        return t1.type === t2.type && t1.val === t2.val;
+    }
+
+    // --- Guaranteed Winnable Board Generator ---
+    function generateWinnableBoard() {
+        let maxAttempts = 100;
+        for (let attempt = 0; attempt < maxAttempts; attempt++) {
+            let deck = shuffle(generateDeck()); 
+            let layout = generateLayout();
+            let remainingSlots = [...layout];
+            let assignedTiles = [];
+            let stuck = false;
+
+            while (remainingSlots.length > 0) {
+                // Find visually open slots in the remaining structure
+                let freeSlots = remainingSlots.filter(s => {
+                    let above = remainingSlots.some(r => r.z === s.z + 1 && r.x === s.x && r.y === s.y);
+                    if (above) return false;
+                    let blockedLeft = remainingSlots.some(r => r.z === s.z && r.y === s.y && r.x === s.x - 1);
+                    let blockedRight = remainingSlots.some(r => r.z === s.z && r.y === s.y && r.x === s.x + 1);
+                    return !(blockedLeft && blockedRight);
+                });
+
+                if (freeSlots.length < 2) {
+                    stuck = true; // Very rare structural dead end
+                    break;
+                }
+
+                // Pick two random free slots
+                shuffle(freeSlots);
+                let slot1 = freeSlots[0];
+                let slot2 = freeSlots[1];
+
+                // Assign a matching pair from the deck
+                let tile1 = deck.pop();
+                let matchIdx = deck.findIndex(t => isMatch(tile1, t));
+                let tile2 = deck.splice(matchIdx, 1)[0];
+
+                assignedTiles.push({ ...slot1, type: tile1.type, val: tile1.val });
+                assignedTiles.push({ ...slot2, type: tile2.type, val: tile2.val });
+
+                // Remove the slots to expose the ones beneath/beside them
+                remainingSlots = remainingSlots.filter(s => s.id !== slot1.id && s.id !== slot2.id);
+            }
+
+            if (!stuck) return assignedTiles;
+        }
+        return []; // Failsafe
+    }
+
     let activeTiles = [];
     let selectedTileId = null;
 
-    // --- 5. SVG Rendering Engine for Tiles ---
     function renderSVG(type, val) {
         let svg = `<svg viewBox="0 0 60 80" xmlns="http://www.w3.org/2000/svg">`;
-        
-        // Accessibility Label in Top Left
         let label = "";
         if (['dot', 'bam', 'char'].includes(type)) label = val;
         else if (type === 'wind') label = val;
@@ -340,15 +364,10 @@
         
         svg += `<text x="4" y="14" font-size="14" font-family="sans-serif" font-weight="bold" fill="#555">${label}</text>`;
 
-        // Center Graphics
         if (type === 'dot') {
             const positions = [
-                [], 
-                [[30, 45]], 
-                [[30, 30], [30, 60]], 
-                [[20, 25], [30, 45], [40, 65]], 
-                [[20, 25], [40, 25], [20, 65], [40, 65]], 
-                [[20, 25], [40, 25], [30, 45], [20, 65], [40, 65]], 
+                [], [[30, 45]], [[30, 30], [30, 60]], [[20, 25], [30, 45], [40, 65]], 
+                [[20, 25], [40, 25], [20, 65], [40, 65]], [[20, 25], [40, 25], [30, 45], [20, 65], [40, 65]], 
                 [[20, 25], [40, 25], [20, 45], [40, 45], [20, 65], [40, 65]], 
                 [[20, 20], [40, 20], [30, 35], [20, 50], [40, 50], [20, 65], [40, 65]], 
                 [[20, 20], [40, 20], [20, 35], [40, 35], [20, 50], [40, 50], [20, 65], [40, 65]], 
@@ -356,22 +375,16 @@
             ];
             let color = val === 1 ? '#e74c3c' : (val % 2 === 0 ? '#27ae60' : '#2980b9');
             let r = val === 1 ? 14 : 7;
-            positions[val].forEach(p => {
-                svg += `<circle cx="${p[0]}" cy="${p[1]}" r="${r}" fill="${color}" stroke="#111" stroke-width="1"/>`;
-            });
+            positions[val].forEach(p => { svg += `<circle cx="${p[0]}" cy="${p[1]}" r="${r}" fill="${color}" stroke="#111" stroke-width="1"/>`; });
         } 
         else if (type === 'bam') {
             if (val === 1) {
-                // Special Bird substitute (Star/Flower shape)
                 svg += `<circle cx="30" cy="45" r="16" fill="none" stroke="#27ae60" stroke-width="3"/>
                         <path d="M 30 25 L 35 45 L 50 45 L 38 55 L 42 70 L 30 60 L 18 70 L 22 55 L 10 45 L 25 45 Z" fill="#e74c3c"/>`;
             } else {
                 const positions = [
-                    [], [], 
-                    [[30, 30], [30, 60]], 
-                    [[30, 25], [20, 55], [40, 55]], 
-                    [[20, 25], [40, 25], [20, 65], [40, 65]], 
-                    [[20, 25], [40, 25], [30, 45], [20, 65], [40, 65]], 
+                    [], [], [[30, 30], [30, 60]], [[30, 25], [20, 55], [40, 55]], 
+                    [[20, 25], [40, 25], [20, 65], [40, 65]], [[20, 25], [40, 25], [30, 45], [20, 65], [40, 65]], 
                     [[20, 25], [40, 25], [20, 45], [40, 45], [20, 65], [40, 65]], 
                     [[20, 20], [40, 20], [30, 35], [20, 50], [40, 50], [20, 65], [40, 65]], 
                     [[20, 20], [40, 20], [20, 35], [40, 35], [20, 50], [40, 50], [20, 65], [40, 65]], 
@@ -410,25 +423,12 @@
         return svg;
     }
 
-    // --- 6. Core Game Logic ---
     function isFree(tile) {
-        // 1. Is there any tile directly above it? (z+1, same x, same y)
         const above = activeTiles.some(t => t.z === tile.z + 1 && t.x === tile.x && t.y === tile.y);
         if (above) return false;
-
-        // 2. Are both left AND right blocked?
         const blockedLeft = activeTiles.some(t => t.z === tile.z && t.y === tile.y && t.x === tile.x - 1);
         const blockedRight = activeTiles.some(t => t.z === tile.z && t.y === tile.y && t.x === tile.x + 1);
-        
-        // It is free if NOT blocked on both sides
         return !(blockedLeft && blockedRight);
-    }
-
-    function isMatch(t1, t2) {
-        if (t1.id === t2.id) return false;
-        if (t1.type === 'flower' && t2.type === 'flower') return true;
-        if (t1.type === 'season' && t2.type === 'season') return true;
-        return t1.type === t2.type && t1.val === t2.val;
     }
 
     function updateVisibility() {
@@ -445,45 +445,36 @@
         
         if (selectedTileId !== null) {
             const t = activeTiles.find(x => x.id === selectedTileId);
-            if(t && !isFree(t)) {
-                selectedTileId = null;
-            }
+            if(t && !isFree(t)) selectedTileId = null;
         }
     }
 
     function onTileClick(id) {
         const tile = activeTiles.find(t => t.id === id);
-        if (!tile || !isFree(tile)) return; // Reject if blocked
+        if (!tile || !isFree(tile)) return; 
 
         if (selectedTileId === null) {
-            // Select first tile
             selectedTileId = id;
             document.getElementById(`tile-${id}`).classList.add('selected');
         } else if (selectedTileId === id) {
-            // Deselect
             selectedTileId = null;
             document.getElementById(`tile-${id}`).classList.remove('selected');
         } else {
-            // Second tile selected, check match
             const t1 = activeTiles.find(t => t.id === selectedTileId);
             const t2 = tile;
 
             if (isMatch(t1, t2)) {
-                // Match! Remove from logic
                 activeTiles = activeTiles.filter(t => t.id !== t1.id && t.id !== t2.id);
-                // Remove from DOM
                 document.getElementById(`tile-${t1.id}`).remove();
                 document.getElementById(`tile-${t2.id}`).remove();
                 selectedTileId = null;
                 
-                // Check win
                 if (activeTiles.length === 0) {
                     document.getElementById('win-message').style.display = 'block';
                 } else {
                     updateVisibility();
                 }
             } else {
-                // Not a match, swap selection
                 document.getElementById(`tile-${selectedTileId}`).classList.remove('selected');
                 selectedTileId = id;
                 document.getElementById(`tile-${id}`).classList.add('selected');
@@ -492,9 +483,7 @@
     }
 
     function showHint() {
-        // Clear old hints visually
         document.querySelectorAll('.hint').forEach(el => el.classList.remove('hint'));
-
         const free = activeTiles.filter(isFree);
         for(let i=0; i<free.length; i++) {
             for(let j=i+1; j<free.length; j++) {
@@ -513,19 +502,16 @@
                 }
             }
         }
-        alert("No visible matches! You might be stuck. Try a new game.");
+        alert("No visible matches! You might be stuck. Try a new game or use the back button if you made a wrong turn.");
     }
 
-    // --- 7. Initialization ---
     function initGame(useInputSeed = false) {
         document.getElementById('win-message').style.display = 'none';
         const container = document.getElementById('board-container');
-        // Clear all except win message
         Array.from(container.children).forEach(c => {
             if(c.id !== 'win-message') container.removeChild(c);
         });
 
-        // Handle Seed
         const inputEl = document.getElementById('game-seed');
         if (useInputSeed && inputEl.value) {
             seed = parseInt(inputEl.value);
@@ -534,33 +520,20 @@
             inputEl.value = seed;
         }
 
-        const deck = shuffle(generateDeck());
-        const layout = generateLayout();
-        
-        activeTiles = layout.map((pos, index) => ({
-            ...pos,
-            type: deck[index].type,
-            val: deck[index].val
-        }));
-
+        activeTiles = generateWinnableBoard();
         selectedTileId = null;
 
-        // Render to DOM
         activeTiles.forEach(t => {
             const el = document.createElement('div');
             el.id = `tile-${t.id}`;
             el.className = 'tile';
             
-            // Positioning math: x*62 (width + gap), y*82 (height + gap)
-            // Stacking: shift left/up slightly per Z level to simulate 3D
             const baseX = t.x * 62;
             const baseY = t.y * 82;
-            const zOffset = t.z * -6; // Move up and left to show depth
+            const zOffset = t.z * -6;
             
-            el.style.left = `${baseX + zOffset + 30}px`; // +30 centers the whole grid roughly
+            el.style.left = `${baseX + zOffset + 30}px`; 
             el.style.top = `${baseY + zOffset + 20}px`;
-            
-            // Correct rendering order
             el.style.zIndex = (t.z * 100) + t.y + t.x;
 
             el.innerHTML = renderSVG(t.type, t.val);
@@ -571,9 +544,7 @@
         updateVisibility();
     }
 
-    // Start immediately
     window.onload = () => initGame(false);
-
 </script>
 </body>
 </html>

@@ -2,7 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1e4d2e">
+
 <title>Classic Mahjong</title>
 <style>
     :root {
@@ -241,6 +245,7 @@
         <button class="primary" onclick="initGame(true)" title="New Game">🆕</button>
         <button onclick="showHint()" title="Hint">💡</button>
         <button onclick="document.getElementById('help-modal').style.display='flex'" title="Help">❓</button>
+        <button onclick="toggleFullScreen()" title="Full Screen">⛶</button>
     </div>
 </header>
 
@@ -564,6 +569,20 @@
 
         updateVisibility();
         scaleBoard();
+    }
+
+    function toggleFullScreen() {
+        if (!document.fullscreenElement) {
+            // Request fullscreen on the entire document
+            document.documentElement.requestFullscreen().catch(err => {
+                console.log(`Error attempting to enable full-screen mode: ${err.message}`);
+            });
+        } else {
+            // Exit fullscreen if already active
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            }
+        }
     }
 
     window.onload = () => {

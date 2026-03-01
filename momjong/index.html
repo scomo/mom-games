@@ -2,11 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1e4d2e">
-
+<link rel="manifest" href='data:application/manifest+json,{"name":"Mahjong","short_name":"Mahjong","display":"standalone","background_color":"#1e4d2e","theme_color":"#1e4d2e"}'>
 <title>Classic Mahjong</title>
 <style>
     :root {
@@ -28,77 +29,16 @@
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         color: #fff;
         display: flex;
-        flex-direction: column;
+        flex-direction: row; 
         height: 100vh;
         box-sizing: border-box;
         overflow: hidden; 
     }
 
-    header {
-        background-color: rgba(0, 0, 0, 0.6);
-        width: 100%;
-        padding: 5px 15px; /* Shrunk padding */
-        box-sizing: border-box;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-        z-index: 100;
-    }
-
-    .controls {
-        display: flex;
-        gap: 10px;
-        align-items: center;
-    }
-
-    .game-number {
-        font-size: 1.1rem;
-        display: flex;
-        align-items: center;
-        gap: 5px;
-        font-weight: bold;
-    }
-
-    input[type="number"] {
-        font-size: 1.1rem;
-        padding: 4px;
-        width: 70px;
-        border-radius: 6px;
-        border: none;
-        text-align: center;
-        background: #fff;
-    }
-
-    button {
-        font-size: 1.5rem; /* Slightly smaller icons */
-        padding: 5px 12px;
-        border: none;
-        border-radius: 8px;
-        background-color: #e0e0e0;
-        color: #333;
-        cursor: pointer;
-        transition: transform 0.1s;
-        box-shadow: 0 3px #999;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-    }
-
-    button:active {
-        box-shadow: 0 0 #999;
-        transform: translateY(3px);
-    }
-    
-    button.primary {
-        background-color: #4CAF50;
-        box-shadow: 0 3px #2E7D32;
-    }
-
     #board-container {
         position: relative;
         flex-grow: 1;
-        width: 100%;
+        height: 100%;
         overflow: hidden; 
     }
 
@@ -106,14 +46,85 @@
         position: absolute;
         top: 50%;
         left: 50%;
-        width: 1250px; /* Expanded for larger tiles */
+        width: 1250px; 
         height: 750px;
+    }
+
+    aside.sidebar {
+        background-color: rgba(0, 0, 0, 0.6);
+        width: 120px; 
+        height: 100%;
+        padding: 20px 15px;
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        box-shadow: -4px 0 10px rgba(0,0,0,0.3);
+        z-index: 100;
+        gap: 25px;
+    }
+
+    .controls {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        width: 100%;
+    }
+
+    .game-number {
+        font-size: 1.1rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        font-weight: bold;
+        width: 100%;
+        text-align: center;
+    }
+
+    input[type="number"] {
+        font-size: 1.2rem;
+        padding: 8px;
+        width: 100%;
+        box-sizing: border-box;
+        border-radius: 6px;
+        border: none;
+        text-align: center;
+        background: #fff;
+    }
+
+    button {
+        font-size: 2.2rem; 
+        padding: 15px 10px; 
+        width: 100%;
+        border: none;
+        border-radius: 8px;
+        background-color: #e0e0e0;
+        color: #333;
+        cursor: pointer;
+        transition: transform 0.1s;
+        box-shadow: 0 4px #999;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    button:active {
+        box-shadow: 0 0 #999;
+        transform: translateY(4px);
+    }
+    
+    button.primary {
+        background-color: #4CAF50;
+        color: white;
+        box-shadow: 0 4px #2E7D32;
     }
 
     .tile {
         position: absolute;
-        width: 85px; /* Bigger width */
-        height: 115px; /* Bigger height */
+        width: 85px; 
+        height: 115px; 
         background-color: var(--tile-bg);
         border: 2px solid var(--tile-border);
         border-radius: 8px;
@@ -205,6 +216,7 @@
         margin: 20px auto;
         font-size: 2rem;
         padding: 15px 30px;
+        width: auto; 
     }
 
     #portrait-warning {
@@ -228,6 +240,30 @@
         }
     }
 
+    /* Vertical compression for phones in landscape */
+    @media (max-height: 450px) {
+        aside.sidebar {
+            padding: 10px 10px;
+            gap: 10px;
+            width: 100px;
+        }
+        .controls {
+            gap: 8px;
+        }
+        .game-number {
+            gap: 4px;
+            font-size: 1rem;
+        }
+        input[type="number"] {
+            padding: 4px;
+            font-size: 1rem;
+        }
+        button {
+            padding: 8px 5px;
+            font-size: 1.6rem;
+        }
+    }
+
 </style>
 </head>
 <body>
@@ -237,23 +273,25 @@
     Please rotate your phone to landscape mode to play.
 </div>
 
-<header>
-    <div class="game-number">
-        Game # <input type="number" id="game-seed" max="99999" min="1">
-    </div>
-    <div class="controls">
-        <button class="primary" onclick="initGame(true)" title="New Game">🆕</button>
-        <button onclick="showHint()" title="Hint">💡</button>
-        <button onclick="document.getElementById('help-modal').style.display='flex'" title="Help">❓</button>
-        <button onclick="toggleFullScreen()" title="Full Screen">⛶</button>
-    </div>
-</header>
-
 <div id="board-container">
     <div id="board-scale-wrapper">
         <div id="win-message">YOU WIN!<br><button class="primary" onclick="initGame()">🔄 Play Again</button></div>
     </div>
 </div>
+
+<aside class="sidebar">
+    <div class="game-number">
+        <div>Game #</div>
+        <input type="number" id="game-seed" max="99999" min="1">
+        <div id="difficulty-score"> </div>
+    </div>
+    <div class="controls">
+        <button class="primary" onclick="initGame(true)" title="New Game">🆕</button>
+        <button onclick="showHint()" title="Hint">💡</button>
+        <button onclick="document.getElementById('help-modal').style.display='flex'" title="Help">❓</button>
+        <button id="fullscreen-btn" onclick="toggleFullScreen()" title="Full Screen">⛶</button>
+    </div>
+</aside>
 
 <div id="help-modal" class="modal">
     <div class="modal-content">
@@ -266,6 +304,16 @@
             <li>Dark tiles are blocked. Bright tiles are ready to play!</li>
             <li><strong>Exceptions:</strong> Any 🌸 Flower matches any other Flower. Any ❄️ Season matches any other Season.</li>
         </ul>
+    </div>
+</div>
+
+<div id="hint-modal" class="modal">
+    <div class="modal-content" style="text-align: center;">
+        <span class="close-btn" onclick="document.getElementById('hint-modal').style.display='none'">&times;</span>
+        <h2 style="margin-top:0; color:#1e4d2e;">No Matches Found</h2>
+        <p>There are no visible matches available right now.</p>
+        <p>You might be stuck! Try starting a <strong>New Game</strong>.</p>
+        <button class="primary" onclick="document.getElementById('hint-modal').style.display='none'; initGame(true)" style="margin: 20px auto 0; width: auto;">Start New Game</button>
     </div>
 </div>
 
@@ -374,7 +422,6 @@
         else if (type === 'dragon') label = val.charAt(0);
         else label = type === 'flower' ? 'Fl' : 'Se';
         
-        // Increased font size of the corner label for better visibility
         svg += `<text x="4" y="16" font-size="18" font-family="sans-serif" font-weight="bold" fill="#222">${label}</text>`;
 
         if (type === 'dot') {
@@ -515,19 +562,66 @@
                 }
             }
         }
-        alert("No visible matches! Try a new game.");
+        document.getElementById('hint-modal').style.display = 'flex';
+    }
+
+    function toggleFullScreen() {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(err => {
+                console.log(`Error attempting to enable full-screen mode: ${err.message}`);
+            });
+        } else {
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            }
+        }
     }
 
     function scaleBoard() {
         const container = document.getElementById('board-container');
         const wrapper = document.getElementById('board-scale-wrapper');
-        
-        // Math updated for the new 1250x750 wrapper
         const scaleX = (container.clientWidth - 20) / 1250; 
         const scaleY = (container.clientHeight - 20) / 750;
         const scale = Math.min(scaleX, scaleY, 1);
-        
         wrapper.style.transform = `translate(-50%, -50%) scale(${scale})`;
+    }
+
+    function assessDifficulty(board) {
+        // 1. Count immediately free matching pairs
+        let freeTiles = board.filter(isFree);
+        let freePairs = 0;
+        let checked = new Set();
+        
+        for (let i = 0; i < freeTiles.length; i++) {
+            if (checked.has(freeTiles[i].id)) continue;
+            for (let j = i + 1; j < freeTiles.length; j++) {
+                if (!checked.has(freeTiles[j].id) && isMatch(freeTiles[i], freeTiles[j])) {
+                    freePairs++;
+                    checked.add(freeTiles[i].id);
+                    checked.add(freeTiles[j].id);
+                    break; 
+                }
+            }
+        }
+
+        // 2. Calculate average vertical depth
+        let totalDepth = board.reduce((sum, tile) => sum + tile.z, 0);
+        let avgDepth = totalDepth / board.length;
+
+        // 3. Count "Hard Blocked" tiles (tiles that have another tile directly on top of them)
+        let hardBlockedCount = board.filter(t => 
+            board.some(above => above.z === t.z + 1 && above.x === t.x && above.y === t.y)
+        ).length;
+
+        // 4. Calculate final heuristic score
+        // Higher free pairs = easier (lowers score)
+        // Higher depth & hard blocks = harder (raises score)
+        let difficultyScore = (avgDepth * 10) + (hardBlockedCount * 0.5) - (freePairs * 1.5);
+
+        // 5. Categorize based on arbitrary thresholds (tweak these after testing)
+        if (difficultyScore < 12) return "Easy";
+        if (difficultyScore < 18) return "Medium";
+        return "Hard";
     }
 
     function initGame(useInputSeed = false) {
@@ -546,6 +640,8 @@
         }
 
         activeTiles = generateWinnableBoard();
+        var difficultyScore = assessDifficulty(activeTiles);
+        document.getElementById('difficulty-score').innerText = difficultyScore;
         selectedTileId = null;
 
         activeTiles.forEach(t => {
@@ -553,7 +649,6 @@
             el.id = `tile-${t.id}`;
             el.className = 'tile';
             
-            // New coordinates based on larger 85x115 tiles
             const baseX = t.x * 87;
             const baseY = t.y * 117;
             const zOffset = t.z * -8;
@@ -571,23 +666,13 @@
         scaleBoard();
     }
 
-    function toggleFullScreen() {
-        if (!document.fullscreenElement) {
-            // Request fullscreen on the entire document
-            document.documentElement.requestFullscreen().catch(err => {
-                console.log(`Error attempting to enable full-screen mode: ${err.message}`);
-            });
-        } else {
-            // Exit fullscreen if already active
-            if (document.exitFullscreen) {
-                document.exitFullscreen();
-            }
-        }
-    }
-
     window.onload = () => {
         initGame(false);
         window.addEventListener('resize', scaleBoard);
+        
+        if (!document.documentElement.requestFullscreen) {
+            document.getElementById('fullscreen-btn').style.display = 'none';
+        }
     };
 </script>
 </body>

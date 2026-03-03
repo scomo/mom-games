@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Mahjong Icon Generator</title>
+<style>
+    body {
+        background-color: #222;
+        color: #fff;
+        font-family: sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 40px;
+        gap: 20px;
+    }
+    .preview-container {
+        display: flex;
+        gap: 40px;
+        align-items: flex-end;
+    }
+    .icon-box {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+    }
+    canvas {
+        border: 1px solid #444;
+        background-color: #000;
+    }
+    button {
+        padding: 10px 20px;
+        font-size: 1rem;
+        background-color: #4CAF50;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+    }
+    button:hover {
+        background-color: #45a049;
+    }
+</style>
+</head>
+<body>
+
+    <h2>App Icon Generator</h2>
+    
+    <div class="preview-container">
+        <div class="icon-box">
+            <canvas id="canvas-512" width="512" height="512"></canvas>
+            <button onclick="downloadIcon('canvas-512', 'icon-512.png')">Download 512x512</button>
+        </div>
+        <div class="icon-box">
+            <canvas id="canvas-192" width="192" height="192"></canvas>
+            <button onclick="downloadIcon('canvas-192', 'icon-192.png')">Download 192x192</button>
+        </div>
+    </div>
+
+<script>
+    function drawIcon(canvasId, size) {
+        const canvas = document.getElementById(canvasId);
+        const ctx = canvas.getContext('2d');
+
+        // 1. Draw App Background (Board Green)
+        ctx.fillStyle = '#1e4d2e';
+        ctx.fillRect(0, 0, size, size);
+
+        // Tile Dimensions relative to canvas size
+        const w = size * 0.55;
+        const h = size * 0.75;
+        const x = (size - w) / 2;
+        const y = (size - h) / 2;
+        const radius = size * 0.08;
+
+        // 2. Draw Tile Shadow
+        ctx.fillStyle = '#0a2e18';
+        ctx.beginPath();
+        ctx.roundRect(x + (size * 0.03), y + (size * 0.04), w, h, radius);
+        ctx.fill();
+
+        // 3. Draw Tile Base
+        ctx.fillStyle = '#fffae6';
+        ctx.beginPath();
+        ctx.roundRect(x, y, w, h, radius);
+        ctx.fill();
+
+        // 4. Draw Tile Border
+        ctx.lineWidth = size * 0.02;
+        ctx.strokeStyle = '#d4cbb3';
+        ctx.stroke();
+
+        // 5. Draw Red Dragon Symbol (中)
+        ctx.fillStyle = '#e74c3c';
+        ctx.font = `bold ${size * 0.4}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        // Nudge text slightly down to vertically center perfectly in most fonts
+        ctx.fillText('中', size / 2, (size / 2) + (size * 0.03));
+    }
+
+    function downloadIcon(canvasId, filename) {
+        const canvas = document.getElementById(canvasId);
+        const link = document.createElement('a');
+        link.download = filename;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+    }
+
+    // Render both icons on load
+    window.onload = () => {
+        drawIcon('canvas-512', 512);
+        drawIcon('canvas-192', 192);
+    };
+</script>
+</body>
+</html>

@@ -85,15 +85,27 @@
         text-align: center;
     }
 
-    input[type="number"] {
-        font-size: 1.2rem;
-        padding: 8px;
+    input[type="number"], select {
+        font-size: 1.1rem;
+        padding: 6px;
         width: 100%;
         box-sizing: border-box;
         border-radius: 6px;
         border: none;
         text-align: center;
         background: #fff;
+        color: #333;
+    }
+
+    select {
+        cursor: pointer;
+    }
+
+    #difficulty-score {
+        font-size: 0.9rem;
+        font-weight: normal;
+        color: #ffd700;
+        margin-top: -4px;
     }
 
     button {
@@ -242,7 +254,6 @@
         }
     }
 
-    /* Vertical compression for phones in landscape */
     @media (max-height: 450px) {
         aside.sidebar {
             padding: 10px 10px;
@@ -256,9 +267,9 @@
             gap: 4px;
             font-size: 1rem;
         }
-        input[type="number"] {
+        input[type="number"], select {
             padding: 4px;
-            font-size: 1rem;
+            font-size: 0.95rem;
         }
         button {
             padding: 8px 5px;
@@ -277,15 +288,22 @@
 
 <div id="board-container">
     <div id="board-scale-wrapper">
-        <div id="win-message">YOU WIN!<br><button class="primary" onclick="initGame()">🔄 Play Again</button></div>
+        <div id="win-message">YOU WIN!<br><button class="primary" onclick="initGame(true)">🔄 Play Again</button></div>
     </div>
 </div>
 
 <aside class="sidebar">
     <div class="game-number">
-        <div>Game #</div>
+        <div>Difficulty</div>
+        <select id="difficulty-select">
+            <option value="Any">Any</option>
+            <option value="Easy">Easy</option>
+            <option value="Medium">Medium</option>
+            <option value="Hard">Hard</option>
+        </select>
+        <div style="margin-top: 10px;">Game #</div>
         <input type="number" id="game-seed" max="99999" min="1">
-        <div id="difficulty-score"> </div>
+        <div id="difficulty-score"></div>
     </div>
     <div class="controls">
         <button class="primary" onclick="initGame(true)" title="New Game">🆕</button>
@@ -589,44 +607,53 @@
     }
 
     function assessDifficulty(board) {
-        // 1. Count immediately free matching pairs
-        let freeTiles = board.filter(isFree);
-        let freePairs = 0;
-        let checked = new Set();
+        let score = 0;
         
-        for (let i = 0; i < freeTiles.length; i++) {
-            if (checked.has(freeTiles[i].id)) continue;
-            for (let j = i + 1; j < freeTiles.length; j++) {
-                if (!checked.has(freeTiles[j].id) && isMatch(freeTiles[i], freeTiles[j])) {
-                    freePairs++;
-                    checked.add(freeTiles[i].id);
-                    checked.add(freeTiles[j].id);
-                    break; 
-                }
-            }
+        // 1. Group free tiles to find "Fatal Triads" (3 identical tiles exposed)
+        let freeTiles = board.filter(isFree);
+        let matchGroups = {};
+        
+        freeTiles.forEach(t => {
+            let key = (t.type === 'flower' || t.type === 'season') ? t.type : `${t.type}-${t.val}`;
+            matchGroups[key] = (matchGroups[key] || 0) + 1;
+        });
+
+        let immediatePairs = 0;
+        for (let key in matchGroups) {
+            if (matchGroups[key] >= 2) immediatePairs++;
+            // Penalize heavily for trap scenarios
+            if (matchGroups[key] === 3) score += 15; 
         }
 
-        // 2. Calculate average vertical depth
-        let totalDepth = board.reduce((sum, tile) => sum + tile.z, 0);
-        let avgDepth = totalDepth / board.length;
+        // 2. Reward the player slightly for having safe, immediate options
+        score -= (immediatePairs * 2);
 
-        // 3. Count "Hard Blocked" tiles (tiles that have another tile directly on top of them)
-        let hardBlockedCount = board.filter(t => 
-            board.some(above => above.z === t.z + 1 && above.x === t.x && above.y === t.y)
-        ).length;
+        // 3. Scan for Strict Deep Dependencies 
+        // Only penalize if a tile is sitting directly on top of its match
+        for (let i = 0; i < board.length; i++) {
+            let topTile = board[i];
+            
+            // Only look at tiles with the exact same X and Y coordinates on lower layers
+            let blockedByTop = board.filter(bottomTile => 
+                (bottomTile.z < topTile.z) && 
+                (bottomTile.x === topTile.x) && 
+                (bottomTile.y === topTile.y)
+            );
 
-        // 4. Calculate final heuristic score
-        // Higher free pairs = easier (lowers score)
-        // Higher depth & hard blocks = harder (raises score)
-        let difficultyScore = (avgDepth * 10) + (hardBlockedCount * 0.5) - (freePairs * 1.5);
+            blockedByTop.forEach(bottomTile => {
+                if (isMatch(topTile, bottomTile)) {
+                    let depthDifference = topTile.z - bottomTile.z;
+                    score += (10 * depthDifference);
+                }
+            });
+        }
 
-        // 5. Categorize based on arbitrary thresholds (tweak these after testing)
-        if (difficultyScore < 12) return "Easy";
-        if (difficultyScore < 18) return "Medium";
+        if (score < 20) return "Easy";
+        if (score < 40) return "Medium";
         return "Hard";
     }
 
-    function initGame(useInputSeed = false) {
+    function initGame(isNewRandomGame = false) {
         document.getElementById('win-message').style.display = 'none';
         const wrapper = document.getElementById('board-scale-wrapper');
         Array.from(wrapper.children).forEach(c => {
@@ -634,16 +661,28 @@
         });
 
         const inputEl = document.getElementById('game-seed');
-        if (useInputSeed && inputEl.value) {
+        const diffSelect = document.getElementById('difficulty-select');
+        let targetDiff = diffSelect.value;
+        let currentDiff = "";
+        let attempts = 0;
+
+        if (!isNewRandomGame && inputEl.value) {
+            // If they manually typed a game number, just load it
             seed = parseInt(inputEl.value);
+            activeTiles = generateWinnableBoard();
+            currentDiff = assessDifficulty(activeTiles);
         } else {
-            seed = Math.floor(Math.random() * 99999) + 1;
-            inputEl.value = seed;
+            // Loop until we find a board matching the selected difficulty
+            do {
+                seed = Math.floor(Math.random() * 99999) + 1;
+                inputEl.value = seed; // Update input so random math uses this seed
+                activeTiles = generateWinnableBoard();
+                currentDiff = assessDifficulty(activeTiles);
+                attempts++;
+            } while (targetDiff !== "Any" && currentDiff !== targetDiff && attempts < 500);
         }
 
-        activeTiles = generateWinnableBoard();
-        var difficultyScore = assessDifficulty(activeTiles);
-        document.getElementById('difficulty-score').innerText = difficultyScore;
+        document.getElementById('difficulty-score').innerText = `(${currentDiff})`;
         selectedTileId = null;
 
         activeTiles.forEach(t => {
@@ -669,7 +708,7 @@
     }
 
     window.onload = () => {
-        initGame(false);
+        initGame(true); // Always start with a random game matching "Any" difficulty
         window.addEventListener('resize', scaleBoard);
         
         if (!document.documentElement.requestFullscreen) {

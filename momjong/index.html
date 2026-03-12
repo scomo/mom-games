@@ -716,5 +716,44 @@
         }
     };
 </script>
+<script>
+    // why this works: The answer is that the browser makes a hardcoded exception specifically 
+    // for the Service Worker file. (sw.js)
+    // Here is exactly how the browser breaks the loop:
+    //
+    // 1. The Cache Bypass
+    // When the game is launched, the browser automatically intercepts the request for sw.js. 
+    // It explicitly bypasses your offline cache and reaches directly out to your GitHub server 
+    // to fetch the latest version of that specific file.
+
+    // 2. The Byte-for-Byte Check
+    // The browser then performs a strict byte-for-byte comparison between the sw.js file it 
+    // just downloaded from GitHub and the sw.js file currently running on the phone.
+
+    // 3. The Installation Trigger
+    // If the files are completely identical, the browser discards the downloaded file and
+    // does nothing. However, if even a single character is different—such as changing const 
+    // CACHE_NAME = 'mahjong-cache-v1'; to v2—the browser immediately flags the new Service 
+    // Worker as an update.
+
+    // 4. The Cache Swap
+    // This new Service Worker is instantly spun up in the background. It fires its install 
+    // event, which executes the code to reach out to GitHub, download the newest HTML, 
+    // JS, and image files, and place them into the brand new v2 cache container. 
+    // Because we included self.skipWaiting() and self.clients.claim() in the code, it 
+    // aggressively kicks out the old Service Worker, deletes the v1 cache, and takes 
+    // over the page.
+
+
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('sw.js').then(registration => {
+                console.log('ServiceWorker registered successfully.');
+            }).catch(error => {
+                console.log('ServiceWorker registration failed:', error);
+            });
+        });
+    }
+</script>
 </body>
 </html>
